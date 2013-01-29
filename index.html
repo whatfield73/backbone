@@ -282,7 +282,7 @@
   <div id="sidebar" class="interface">
 
     <a class="toc_title" href="#">
-      Backbone.js <span class="version">(0.9.9)</span>
+      Backbone.js <span class="version">(0.9.10)</span>
     </a>
     <ul class="toc_section">
       <li>&raquo; <a href="http://github.com/documentcloud/backbone">GitHub Repository</a></li>
@@ -334,6 +334,7 @@
       <li>– <a href="#Model-save">save</a></li>
       <li>– <a href="#Model-destroy">destroy</a></li>
       <li>– <a href="#Model-validate">validate</a></li>
+      <li>– <a href="#Model-validationError">validationError</a></li>
       <li>– <a href="#Model-url">url</a></li>
       <li>– <a href="#Model-urlRoot">urlRoot</a></li>
       <li>– <a href="#Model-parse">parse</a></li>
@@ -469,7 +470,6 @@
       <li>– <a href="#examples-seatgeek">SeatGeek</a></li>
       <li>– <a href="#examples-easel">Easel</a></li>
       <li>– <a href="#examples-prose">Prose</a></li>
-      <li>– <a href="#examples-scrollkit">scroll kit</a></li>
       <li>- <a href="#examples-jolicloud">Jolicloud</a></li>
       <li>– <a href="#examples-battlefield">Battlefield Play4Free</a></li>
       <li>– <a href="#examples-syllabus">Syllabus</a></li>
@@ -548,11 +548,11 @@
 
     <table>
       <tr>
-        <td><a class="punch" href="backbone.js">Development Version (0.9.9)</a></td>
+        <td><a class="punch" href="backbone.js">Development Version (0.9.10)</a></td>
         <td class="text"><i>56kb, Full source, lots of comments</i></td>
       </tr>
       <tr>
-        <td><a class="punch" href="backbone-min.js">Production Version (0.9.9)</a></td>
+        <td><a class="punch" href="backbone-min.js">Production Version (0.9.10)</a></td>
         <td class="text"><i>6.3kb, Packed and gzipped</i></td>
       </tr>
       <tr>
@@ -612,17 +612,10 @@
       to execute them.
     </p>
 
-    <h2 id="upgrading">Upgrading to Edge</h2>
+    <h2 id="upgrading">Upgrading to 0.9.10</h2>
 
     <p>
-      You're reading the docs for an unreleased version. See the 
-      <a href="#changelog">change log</a>.
-    </p>
-
-    <h2>Upgrading to 0.9.9</h2>
-
-    <p>
-      Backbone <b>0.9.9</b> should be considered as a release candidate
+      Backbone <b>0.9.10</b> should be considered as a release candidate
       for an upcoming <b>1.0</b>. If you're upgrading from a previous version,
       be sure to check the
       <a href="#changelog">change log</a>. In brief, a few of the larger changes
@@ -655,6 +648,20 @@
       </li>
       <li>
         Backbone events now support <a href="#Events-once"</a>once</a>.
+      </li>
+      <li>
+        Model validation is now only enforced by default in
+        <tt>Model#save</tt> and no longer enforced by default upon
+        construction or in <tt>Model#set</tt>, unless the <tt>{validate:true}</tt>
+        option is passed.
+      </li>
+      <li>
+        Passing <tt>{silent:true}</tt> on change will no longer delay individual
+        <tt>"change:attr"</tt> events, instead they are silenced entirely.
+      </li>
+      <li>
+        The <tt>Model#change</tt> method has been removed, as delayed attribute
+        changes are no longer available.
       </li>
     </ul>
 
@@ -824,11 +831,11 @@ view.stopListening(model);
       <li><b>"change:[attribute]"</b> (model, value, options) &mdash; when a specific attribute has been updated. </li>
       <li><b>"destroy"</b> (model, collection, options) &mdash; when a model is <a href="#Model-destroy">destroyed</a>. </li>
       <li><b>"request"</b> (model, xhr, options) &mdash; when a model (or collection) has started a request to the server. </li>
-      <li><b>"sync"</b> (model, resp, options) &mdash; when a model has been successfully synced with the server. </li>
+      <li><b>"sync"</b> (model, resp, options) &mdash; when a model (or collection) has been successfully synced with the server. </li>
       <li><b>"error"</b> (model, xhr, options) &mdash; when a model's <a href="#Model-save">save</a> call fails on the server. </li>
       <li><b>"invalid"</b> (model, error, options) &mdash; when a model's <a href="#Model-validate">validation</a> fails on the client. </li>
       <li><b>"route:[name]"</b> (params) &mdash; Fired by the router when a specific route is matched.</li>
-      <li><b>"route"</b> (router, route, params) &mdash; Fired by history when <i>any</i> route has been matched.</li>
+      <li><b>"route"</b> (router, route, params) &mdash; Fired by history (or router) when <i>any</i> route has been matched.</li>
       <li><b>"all"</b> &mdash; this special event fires for <i>any</i> triggered event, passing the event name as the first argument. </li>
     </ul>
 
@@ -977,16 +984,6 @@ note.set({title: "March 20", content: "In his eyes she eclipses..."});
 book.set("title", "A Scandal in Bohemia");
 </pre>
 
-    <p>
-      If the model has a <a href="#Model-validate">validate</a> method,
-      it will be validated before the attributes are set, no changes will
-      occur if the validation fails, and <b>set</b> will return <tt>false</tt>.
-      Otherwise, <b>set</b> returns a reference to the model.
-      You may also pass an <tt>error</tt>
-      callback in the options, which will be invoked alongside the
-      <tt>"error"</tt> event, should validation fail.
-    </p>
-
     <p id="Model-escape">
       <b class="header">escape</b><code>model.escape(attribute)</code>
       <br />
@@ -1081,7 +1078,7 @@ alert("Cake id: " + cake.id);
     <p>
       Please use <a href="#Model-set">set</a> to update the <b>attributes</b>
       instead of modifying them directly. If you'd like to retrieve and munge a
-      copy of the model's attributes, use <a href="#Model-toJSON">toJSON</a>
+      copy of the model's attributes, use <tt>_.clone(model.attributes)</tt>
       instead.
     </p>
 
@@ -1095,9 +1092,8 @@ alert("Cake id: " + cake.id);
       <br />
       The <b>changed</b> property is the internal hash containing all the attributes
       that have changed since the last <tt>"change"</tt> event was triggered.
-      Please do not update <b>changed</b> directly.  Its state is maintained internally
-      by <a href="#Model-set">set</a> and <a href="#Model-change">change</a>.
-      A copy of <b>changed</b> can be acquired from
+      Please do not update <b>changed</b> directly since its state is internally maintained
+      by <a href="#Model-set">set</a>.  A copy of <b>changed</b> can be acquired from
       <a href="#Model-changedAttributes">changedAttributes</a>.
     </p>
 
@@ -1130,11 +1126,13 @@ alert("Dessert will be " + (new Meal).get('dessert'));
     <p id="Model-toJSON">
       <b class="header">toJSON</b><code>model.toJSON()</code>
       <br />
-      Return a copy of the model's <a href="#Model-attributes">attributes</a> for JSON stringification.
-      This can be used for persistence, serialization, or for augmentation before
-      being handed off to a view. The name of this method is a bit confusing, as
-      it doesn't actually return a JSON string &mdash; but I'm afraid that it's
-      the way that the <a href="https://developer.mozilla.org/en/JSON#toJSON()_method">JavaScript API for <b>JSON.stringify</b> works</a>.
+      Return a copy of the model's <a href="#Model-attributes">attributes</a>
+      for JSON stringification.  This can be used for persistence,
+      serialization, or for augmentation before being sent to the server. The
+      name of this method is a bit confusing, as it doesn't actually return a
+      JSON string &mdash; but I'm afraid that it's the way that the
+      <a href="https://developer.mozilla.org/en/JSON#toJSON()_method">JavaScript API for <b>JSON.stringify</b></a>
+      works.
     </p>
 
 <pre class="runnable">
@@ -1236,10 +1234,8 @@ book.save({author: "Teddy"});
       <b>save</b> accepts <tt>success</tt> and <tt>error</tt> callbacks in the
       options hash, which are passed <tt>(model, response, options)</tt> and
       <tt>(model, xhr, options)</tt> as arguments, respectively.
-      The <tt>error</tt> callback will also be invoked if the model has a
-      <tt>validate</tt> method, and validation fails. If a server-side
-      validation fails, return a non-<tt>200</tt> HTTP response code, along with
-      an error response in text or JSON.
+      If a server-side validation fails, return a non-<tt>200</tt> 
+      HTTP response code, along with an error response in text or JSON.
     </p>
 
 <pre>
@@ -1277,7 +1273,7 @@ book.destroy({success: function(model, response) {
       your custom validation logic, if you have any that can be performed
       in JavaScript. By default <b>validate</b> is called before
       <tt>save</tt>, but can also be called before <tt>set</tt> if
-      <tt>{validate:true}</tt> is passed. The <b>validate</b> method is passed 
+      <tt>{validate:true}</tt> is passed. The <b>validate</b> method is passed
       the model attributes, as well as the options from <tt>set</tt> or <tt>save</tt>.
       If the attributes are valid, don't return anything from <b>validate</b>;
       if they are invalid, return an error of your choosing. It
@@ -1285,7 +1281,9 @@ book.destroy({success: function(model, response) {
       error object that describes the error programmatically. If <b>validate</b>
       returns an error, <tt>set</tt> and <tt>save</tt> will not continue, and the
       model attributes will not be modified.
-      Failed validations trigger an <tt>"error"</tt> event.
+      Failed validations trigger an <tt>"invalid"</tt> event, and set the
+      <tt>validationError</tt> property on the model with the value returned by
+      this method.
     </p>
 
 <pre class="runnable">
@@ -1301,29 +1299,26 @@ var one = new Chapter({
   title : "Chapter One: The Beginning"
 });
 
-one.on("error", function(model, error) {
+one.on("invalid", function(model, error) {
   alert(model.get("title") + " " + error);
 });
 
-one.set({
+one.save({
   start: 15,
   end:   10
 });
 </pre>
 
     <p>
-      <tt>"error"</tt> events are useful for providing coarse-grained error
-      messages at the model or collection level. An <tt>error</tt> callback can
-      can also be specified in the options, to be called alongside the error event:
+      <tt>"invalid"</tt> events are useful for providing coarse-grained error
+      messages at the model or collection level.
     </p>
 
-<pre>
-account.set({access: "unlimited"}, {
-  error: function(model, error) {
-    alert(error);
-  }
-});
-</pre>
+    <p id="Model-validationError">
+      <b class="header">validationError</b><code>model.validationError</code>
+      <br />
+      The value returned by <a href="#Model-validate">validate</a> during the last failed validation.
+    </p>
 
     <p id="Model-url">
       <b class="header">url</b><code>model.url()</code>
@@ -2508,7 +2503,7 @@ ui.Chapter = Backbone.View.extend({
 var Bookmark = Backbone.View.extend({
   template: _.template(…),
   render: function() {
-    this.$el.html(this.template(this.model.toJSON()));
+    this.$el.html(this.template(this.model.attributes));
     return this;
   }
 });
@@ -2594,7 +2589,7 @@ var DocumentView = Backbone.View.extend({
   },
 
   render: function() {
-    this.$el.html(this.template(this.model.toJSON()));
+    this.$el.html(this.template(this.model.attributes));
     return this;
   },
 
@@ -3147,17 +3142,17 @@ var model = localBackbone.Model.extend(...);
     <h2 id="examples-artsy">Art.sy</h2>
 
     <p>
-      <a href="http://art.sy">Art.sy</a> is a place to discover art you'll
+      <a href="http://artsy.net">Art.sy</a> is a place to discover art you'll
       love. Art.sy is built on Rails, using
       <a href="https://github.com/intridea/grape">Grape</a> to serve a robust
-      <a href="http://art.sy/api">JSON API</a>. The main site is a single page
+      <a href="http://artsy.net/api">JSON API</a>. The main site is a single page
       app written in Coffeescript and uses Backbone to provide structure around
       this API. An admin panel and partner CMS have also been extracted into
       their own API-consuming Backbone projects.
     </p>
 
     <div style="text-align: center;">
-      <a href="http://art.sy">
+      <a href="http://artsy.net">
         <img width="550" height="550" data-original="docs/images/artsy.png" alt="Art.sy" class="example_image" />
       </a>
     </div>
@@ -3813,21 +3808,41 @@ ActiveRecord::Base.include_root_in_json = false
 
     <h2 id="changelog">Change Log</h2>
 
-    <b class="header">Edge</b> &mdash; <small><i>Not yet released</i></small> &mdash; <a href="https://github.com/documentcloud/backbone/compare/0.9.9...master">Diff</a><br />
+    <b class="header">0.9.10</b> &mdash; <small><i>Jan. 15, 2013</i></small> &mdash; <a href="https://github.com/documentcloud/backbone/compare/0.9.9...0.9.10">Diff</a><br />
     <ul style="margin-top: 5px;">
       <li>
-        Model validation is now only enforced by default in 
+        A <tt>"route"</tt> event is triggered on the router in addition
+        to being fired on <tt>Backbone.history</tt>.
+      </li>
+      <li>
+        Model validation is now only enforced by default in
         <tt>Model#save</tt> and no longer enforced by default upon
-        construction or in <tt>Model#set</tt>, unless the
-        <tt>{validate:true}</tt> option is passed.
+        construction or in <tt>Model#set</tt>, unless the <tt>{validate:true}</tt>
+        option is passed.
       </li>
       <li>
         <tt>View#make</tt> has been removed. You'll need to use <tt>$</tt> directly to
         construct DOM elements now.
       </li>
+      <li>
+        Passing <tt>{silent:true}</tt> on change will no longer delay individual
+        <tt>"change:attr"</tt> events, instead they are silenced entirely.
+      </li>
+      <li>
+        The <tt>Model#change</tt> method has been removed, as delayed attribute
+        changes as no longer available.
+      </li>
+      <li>
+        Bug fix on <tt>change</tt> where attribute comparison uses <tt>!==</tt>
+        instead of <tt>_.isEqual</tt>.
+      </li>
+      <li>
+        Bug fix where an empty response from the server on save would not call
+        the success function.
+      </li>
     </ul>
 
-    <b class="header">0.9.9</b> &mdash; <small><i>Dec. 13, 2012</i></small> &mdash; <a href="https://github.com/documentcloud/backbone/compare/0.9.2...0.9.9">Diff</a><br />
+    <b class="header">0.9.9</b> &mdash; <small><i>Dec. 13, 2012</i></small> &mdash; <a href="https://github.com/documentcloud/backbone/compare/0.9.2...0.9.9">Diff</a> &mdash; <a href="http://htmlpreview.github.com/?https://raw.github.com/documentcloud/backbone/0.9.9/index.html">Docs</a><br />
     <ul style="margin-top: 5px;">
       <li>
         Added <a href="#Events-listenTo">listenTo</a>
@@ -3945,7 +3960,7 @@ ActiveRecord::Base.include_root_in_json = false
       </li>
     </ul>
 
-    <b class="header">0.9.2</b> &mdash; <small><i>March 21, 2012</i></small> &mdash; <a href="https://github.com/documentcloud/backbone/compare/0.9.1...0.9.2">Diff</a><br />
+    <b class="header">0.9.2</b> &mdash; <small><i>March 21, 2012</i></small> &mdash; <a href="https://github.com/documentcloud/backbone/compare/0.9.1...0.9.2">Diff</a> &mdash; <a href="http://htmlpreview.github.com/?https://raw.github.com/documentcloud/backbone/0.9.2/index.html">Docs</a><br />
     <ul style="margin-top: 5px;">
       <li>
         Instead of throwing an error when adding duplicate models to a collection,
@@ -3987,7 +4002,7 @@ ActiveRecord::Base.include_root_in_json = false
       </li>
     </ul>
 
-    <b class="header">0.9.1</b> &mdash; <small><i>Feb. 2, 2012</i></small> &mdash; <a href="https://github.com/documentcloud/backbone/compare/0.9.0...0.9.1">Diff</a><br />
+    <b class="header">0.9.1</b> &mdash; <small><i>Feb. 2, 2012</i></small> &mdash; <a href="https://github.com/documentcloud/backbone/compare/0.9.0...0.9.1">Diff</a> &mdash; <a href="http://htmlpreview.github.com/?https://raw.github.com/documentcloud/backbone/0.9.1/index.html">Docs</a><br />
     <ul style="margin-top: 5px;">
       <li>
         Reverted to 0.5.3-esque behavior for validating models. Silent changes
@@ -4005,7 +4020,7 @@ ActiveRecord::Base.include_root_in_json = false
       </li>
     </ul>
 
-    <b class="header">0.9.0</b> &mdash; <small><i>Jan. 30, 2012</i></small> &mdash; <a href="https://github.com/documentcloud/backbone/compare/0.5.3...0.9.0">Diff</a><br />
+    <b class="header">0.9.0</b> &mdash; <small><i>Jan. 30, 2012</i></small> &mdash; <a href="https://github.com/documentcloud/backbone/compare/0.5.3...0.9.0">Diff</a> &mdash; <a href="http://htmlpreview.github.com/?https://raw.github.com/documentcloud/backbone/0.9.0/index.html">Docs</a><br />
     <ul style="margin-top: 5px;">
       <li>
         Creating and destroying models with <tt>create</tt> and <tt>destroy</tt>
@@ -4103,7 +4118,7 @@ ActiveRecord::Base.include_root_in_json = false
     </ul>
 
     <p>
-      <b class="header">0.5.3</b> &mdash; <small><i>August 9, 2011</i></small><br />
+      <b class="header">0.5.3</b> &mdash; <small><i>August 9, 2011</i></small> &mdash; <a href="https://github.com/documentcloud/backbone/compare/0.5.2...0.5.3">Diff</a> &mdash; <a href="http://htmlpreview.github.com/?https://raw.github.com/documentcloud/backbone/0.5.3/index.html">Docs</a><br />
       A View's <tt>events</tt> property may now be defined as a function, as well
       as an object literal, making it easier to programmatically define and inherit
       events. <tt>groupBy</tt> is now proxied from Underscore as a method on Collections.
@@ -4113,7 +4128,7 @@ ActiveRecord::Base.include_root_in_json = false
     </p>
 
     <p>
-      <b class="header">0.5.2</b> &mdash; <small><i>July 26, 2011</i></small><br />
+      <b class="header">0.5.2</b> &mdash; <small><i>July 26, 2011</i></small> &mdash; <a href="https://github.com/documentcloud/backbone/compare/0.5.1...0.5.2">Diff</a> &mdash; <a href="http://htmlpreview.github.com/?https://raw.github.com/documentcloud/backbone/0.5.2/index.html">Docs</a><br />
       The <tt>bind</tt> function, can now take an optional third argument, to specify
       the <tt>this</tt> of the callback function.
       Multiple models with the same <tt>id</tt> are now allowed in a collection.
@@ -4124,7 +4139,7 @@ ActiveRecord::Base.include_root_in_json = false
     </p>
 
     <p>
-      <b class="header">0.5.1</b> &mdash; <small><i>July 5, 2011</i></small><br />
+      <b class="header">0.5.1</b> &mdash; <small><i>July 5, 2011</i></small> &mdash; <a href="https://github.com/documentcloud/backbone/compare/0.5.0...0.5.1">Diff</a> &mdash; <a href="http://htmlpreview.github.com/?https://raw.github.com/documentcloud/backbone/0.5.1/index.html">Docs</a><br />
       Cleanups from the 0.5.0 release, to wit: improved transparent upgrades from
       hash-based URLs to pushState, and vice-versa. Fixed inconsistency with
       non-modified attributes being passed to <tt>Model#initialize</tt>. Reverted
@@ -4133,7 +4148,7 @@ ActiveRecord::Base.include_root_in_json = false
     </p>
 
     <p>
-      <b class="header">0.5.0</b> &mdash; <small><i>July 1, 2011</i></small><br />
+      <b class="header">0.5.0</b> &mdash; <small><i>July 1, 2011</i></small> &mdash; <a href="https://github.com/documentcloud/backbone/compare/0.3.3...0.5.0">Diff</a> &mdash; <a href="http://htmlpreview.github.com/?https://raw.github.com/documentcloud/backbone/0.5.0/index.html">Docs</a><br />
       A large number of tiny tweaks and micro bugfixes, best viewed by looking
       at <a href="https://github.com/documentcloud/backbone/compare/0.3.3...0.5.0">the commit diff</a>.
       HTML5 <tt>pushState</tt> support, enabled by opting-in with:
@@ -4157,7 +4172,7 @@ ActiveRecord::Base.include_root_in_json = false
     </p>
 
     <p>
-      <b class="header">0.3.3</b> &mdash; <small><i>Dec 1, 2010</i></small><br />
+      <b class="header">0.3.3</b> &mdash; <small><i>Dec 1, 2010</i></small> &mdash; <a href="https://github.com/documentcloud/backbone/compare/0.3.2...0.3.3">Diff</a> &mdash; <a href="http://htmlpreview.github.com/?https://raw.github.com/documentcloud/backbone/0.3.3/index.html">Docs</a><br />
       Backbone.js now supports <a href="http://zeptojs.com">Zepto</a>, alongside
       jQuery, as a framework for DOM manipulation and Ajax support.
       Implemented <a href="#Model-escape">Model#escape</a>, to efficiently handle
@@ -4168,7 +4183,7 @@ ActiveRecord::Base.include_root_in_json = false
     </p>
 
     <p>
-      <b class="header">0.3.2</b> &mdash; <small><i>Nov 23, 2010</i></small><br />
+      <b class="header">0.3.2</b> &mdash; <small><i>Nov 23, 2010</i></small> &mdash; <a href="https://github.com/documentcloud/backbone/compare/0.3.1...0.3.2">Diff</a> &mdash; <a href="http://htmlpreview.github.com/?https://raw.github.com/documentcloud/backbone/0.3.2/index.html">Docs</a><br />
       Bugfix for IE7 + iframe-based "hashchange" events. <tt>sync</tt> may now be
       overridden on a per-model, or per-collection basis. Fixed recursion error
       when calling <tt>save</tt> with no changed attributes, within a
@@ -4176,7 +4191,7 @@ ActiveRecord::Base.include_root_in_json = false
     </p>
 
     <p>
-      <b class="header">0.3.1</b> &mdash; <small><i>Nov 15, 2010</i></small><br />
+      <b class="header">0.3.1</b> &mdash; <small><i>Nov 15, 2010</i></small> &mdash; <a href="https://github.com/documentcloud/backbone/compare/0.3.0...0.3.1">Diff</a> &mdash; <a href="http://htmlpreview.github.com/?https://raw.github.com/documentcloud/backbone/0.3.1/index.html">Docs</a><br />
       All <tt>"add"</tt> and <tt>"remove"</tt> events are now sent through the
       model, so that views can listen for them without having to know about the
       collection. Added a <tt>remove</tt> method to <a href="#View">Backbone.View</a>.
@@ -4185,7 +4200,7 @@ ActiveRecord::Base.include_root_in_json = false
     </p>
 
     <p>
-      <b class="header">0.3.0</b> &mdash; <small><i>Nov 9, 2010</i></small><br />
+      <b class="header">0.3.0</b> &mdash; <small><i>Nov 9, 2010</i></small> &mdash; <a href="https://github.com/documentcloud/backbone/compare/0.2.0...0.3.0">Diff</a> &mdash; <a href="http://htmlpreview.github.com/?https://raw.github.com/documentcloud/backbone/0.3.0/index.html">Docs</a><br />
       Backbone now has <a href="#Controller">Controllers</a> and
       <a href="#History">History</a>, for doing client-side routing based on
       URL fragments.
@@ -4199,7 +4214,7 @@ ActiveRecord::Base.include_root_in_json = false
     </p>
 
     <p>
-      <b class="header">0.2.0</b> &mdash; <small><i>Oct 25, 2010</i></small><br />
+      <b class="header">0.2.0</b> &mdash; <small><i>Oct 25, 2010</i></small> &mdash; <a href="https://github.com/documentcloud/backbone/compare/0.1.2...0.2.0">Diff</a> &mdash; <a href="http://htmlpreview.github.com/?https://raw.github.com/documentcloud/backbone/0.2.0/index.html">Docs</a><br />
       Instead of requiring server responses to be namespaced under a <tt>model</tt>
       key, now you can define your own <a href="#Model-parse">parse</a> method
       to convert responses into attributes for Models and Collections.
@@ -4211,7 +4226,7 @@ ActiveRecord::Base.include_root_in_json = false
     </p>
 
     <p>
-      <b class="header">0.1.2</b> &mdash; <small><i>Oct 19, 2010</i></small><br />
+      <b class="header">0.1.2</b> &mdash; <small><i>Oct 19, 2010</i></small> &mdash; <a href="https://github.com/documentcloud/backbone/compare/0.1.1...0.1.2">Diff</a> &mdash; <a href="http://htmlpreview.github.com/?https://raw.github.com/documentcloud/backbone/0.1.2/index.html">Docs</a><br />
       Added a <a href="#Model-fetch">Model#fetch</a> method for refreshing the
       attributes of single model from the server.
       An <tt>error</tt> callback may now be passed to <tt>set</tt> and <tt>save</tt>
@@ -4225,13 +4240,13 @@ ActiveRecord::Base.include_root_in_json = false
     </p>
 
     <p>
-      <b class="header">0.1.1</b> &mdash; <small><i>Oct 14, 2010</i></small><br />
+      <b class="header">0.1.1</b> &mdash; <small><i>Oct 14, 2010</i></small> &mdash; <a href="https://github.com/documentcloud/backbone/compare/0.1.0...0.1.1">Diff</a> &mdash; <a href="http://htmlpreview.github.com/?https://raw.github.com/documentcloud/backbone/0.1.1/index.html">Docs</a><br />
       Added a convention for <tt>initialize</tt> functions to be called
       upon instance construction, if defined. Documentation tweaks.
     </p>
 
     <p>
-      <b class="header">0.1.0</b> &mdash; <small><i>Oct 13, 2010</i></small><br />
+      <b class="header">0.1.0</b> &mdash; <small><i>Oct 13, 2010</i></small> &mdash; <a href="http://htmlpreview.github.com/?https://raw.github.com/documentcloud/backbone/0.1.0/index.html">Docs</a><br />
       Initial Backbone release.
     </p>
 
